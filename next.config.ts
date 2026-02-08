@@ -1,7 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  reactCompiler: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "avatar.linear.app",
+      },
+      {
+        protocol: "https",
+        hostname: "*.linear.app",
+      },
+    ],
+  },
 };
 
 export default nextConfig;
