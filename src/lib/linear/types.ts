@@ -22,6 +22,12 @@ export interface LinearLabel {
   color: string;
 }
 
+export interface LinearAttachment {
+  id: string;
+  title: string | null;
+  url: string;
+}
+
 export interface LinearIssue {
   id: string;
   identifier: string;
@@ -33,6 +39,8 @@ export interface LinearIssue {
   state: LinearWorkflowState;
   assignee: LinearUser | null;
   labels: LinearLabel[];
+  project: { id: string; name: string } | null;
+  attachments: LinearAttachment[];
   createdAt: string;
   updatedAt: string;
   startedAt: string | null;
@@ -41,7 +49,6 @@ export interface LinearIssue {
   archivedAt: string | null;
   dueDate: string | null;
   cycleId: string | null;
-  projectId: string | null;
   url: string;
 }
 

@@ -101,6 +101,17 @@ export const TEAM_ISSUES_QUERY = `
               color
             }
           }
+          project {
+            id
+            name
+          }
+          attachments {
+            nodes {
+              id
+              title
+              url
+            }
+          }
           createdAt
           updatedAt
           startedAt
