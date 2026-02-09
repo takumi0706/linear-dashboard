@@ -21,6 +21,7 @@ import type {
   LinearProject,
   LinearWorkflowState,
   LinearLabel,
+  LinearAttachment,
 } from "@/lib/linear/types";
 
 // --- Viewer ---
@@ -104,8 +105,9 @@ export function useTeamLabels(teamId: string | null) {
 
 // --- Team Issues ---
 
-interface IssueNode extends Omit<LinearIssue, "labels"> {
+interface IssueNode extends Omit<LinearIssue, "labels" | "attachments"> {
   labels: { nodes: LinearLabel[] };
+  attachments: { nodes: LinearAttachment[] };
 }
 
 interface TeamIssuesResponse {
@@ -117,10 +119,11 @@ interface TeamIssuesResponse {
   };
 }
 
-function flattenIssueLabels(issue: IssueNode): LinearIssue {
+function flattenIssueNode(issue: IssueNode): LinearIssue {
   return {
     ...issue,
     labels: issue.labels.nodes,
+    attachments: issue.attachments.nodes,
   };
 }
 
@@ -129,7 +132,7 @@ export function useTeamIssues(teamId: string | null) {
     queryKey: ["team-issues", teamId],
     queryFn: () =>
       linearGraphQL<TeamIssuesResponse>(TEAM_ISSUES_QUERY, { teamId }),
-    select: (data) => data.team.issues.nodes.map(flattenIssueLabels),
+    select: (data) => data.team.issues.nodes.map(flattenIssueNode),
     enabled: !!teamId,
     refetchInterval: REFRESH_INTERVALS.auto,
     refetchIntervalInBackground: false,

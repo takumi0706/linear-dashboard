@@ -213,37 +213,77 @@ export default function WeeklyPage() {
 
   // クリップボードにコピー（Markdown形式で進捗MTG向け）
   const handleCopy = useCallback(() => {
-    const dateRange = `${formatShortDate(weekAgo)} 〜 ${formatShortDate(now)}`;
-    const lines: string[] = [
-      `## 週次進捗レビュー（${dateRange}）`,
-      "",
-      `- 完了イシュー数: **${totalCount}件**`,
-      `- 完了ポイント: **${totalPoints}pt**`,
-      avgCycleTime !== null
-        ? `- 平均サイクルタイム: **${avgCycleTime.toFixed(1)}日**`
-        : "",
-      "",
-    ];
+    if (!issues) return;
 
-    for (const group of dayGroups) {
-      lines.push(`### ${group.label}（${group.issues.length}件）`);
-      for (const { issue, cycleTimeDays } of group.issues) {
-        const assignee = issue.assignee?.name ?? "未割当";
-        const ct =
-          cycleTimeDays !== null ? ` (${cycleTimeDays.toFixed(1)}日)` : "";
-        const pts = issue.estimate ? ` [${issue.estimate}pt]` : "";
-        lines.push(
-          `- ${issue.identifier}: ${issue.title} — @${assignee}${pts}${ct}`
+    const isNotEpicOrPhase = (i: LinearIssue) =>
+      !/phase|epic/i.test(i.title);
+
+    // イシューを3カテゴリに分類（Phase/Epicは除外）
+    const todoIssues = issues.filter(
+      (i) =>
+        i.state.type === "unstarted" &&
+        i.assignee !== null &&
+        isNotEpicOrPhase(i)
+    );
+    const inProgressIssues = issues.filter(
+      (i) => i.state.type === "started" && isNotEpicOrPhase(i)
+    );
+    const doneIssues = issues.filter((i) => {
+      if (i.state.type !== "completed" || !i.completedAt) return false;
+      const completed = new Date(i.completedAt);
+      return completed >= weekAgo && completed <= now && isNotEpicOrPhase(i);
+    });
+
+    // PRリンクを抽出するヘルパー
+    const getPrUrls = (issue: LinearIssue): string[] =>
+      issue.attachments
+        .filter(
+          (a) => a.url.includes("github.com") || a.url.includes("gitlab.com")
+        )
+        .map((a) => a.url);
+
+    // 各イシューのMarkdown行を生成
+    const formatIssueLines = (
+      issue: LinearIssue,
+      category: "todo" | "inProgress" | "done"
+    ): string[] => {
+      const result: string[] = [];
+      result.push(`  - ${issue.title}`);
+      result.push(`    - [Linear](${issue.url})`);
+      const prUrls = getPrUrls(issue);
+      for (const prUrl of prUrls) {
+        result.push(`    - [PR](${prUrl})`);
+      }
+      if (category === "todo" && issue.assignee) {
+        result.push(`    - ${issue.assignee.name}さん持ち`);
+      } else if (category === "inProgress" && issue.assignee) {
+        result.push(
+          `    - ${issue.assignee.name}さん -> ${issue.state.name}`
         );
       }
-      lines.push("");
+      return result;
+    };
+
+    const lines: string[] = [];
+
+    if (todoIssues.length > 0) {
+      lines.push("- **ToDo:**");
+      for (const issue of todoIssues) {
+        lines.push(...formatIssueLines(issue, "todo"));
+      }
     }
 
-    if (assigneeSummaries.length > 0) {
-      lines.push("### 担当者別");
-      for (const s of assigneeSummaries) {
-        const name = s.user?.name ?? "未割当";
-        lines.push(`- ${name}: ${s.count}件 (${s.totalEstimate}pt)`);
+    if (inProgressIssues.length > 0) {
+      lines.push("- **InProgress:**");
+      for (const issue of inProgressIssues) {
+        lines.push(...formatIssueLines(issue, "inProgress"));
+      }
+    }
+
+    if (doneIssues.length > 0) {
+      lines.push("- **Done:**");
+      for (const issue of doneIssues) {
+        lines.push(...formatIssueLines(issue, "done"));
       }
     }
 
@@ -251,15 +291,7 @@ export default function WeeklyPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
-  }, [
-    weekAgo,
-    now,
-    totalCount,
-    totalPoints,
-    avgCycleTime,
-    dayGroups,
-    assigneeSummaries,
-  ]);
+  }, [issues, weekAgo, now]);
 
   if (issuesLoading) return <WeeklySkeleton />;
 
